@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mother of Dragons: Memory & Maester Challenge</title>
+    <style>
+        :root {
+            --bg-deep: #0a0806;
+            --bg-surface: #14100c;
+            --bg-panel: rgba(20, 16, 12, 0.85);
+            --gold-primary: #d4af37;
+            --gold-light: #f3e5ab;
+            --gold-dark: #8c7323;
+            --valyrian-red: #8b0000;
+            --valyrian-glow: #ff2200;
+            --ice-blue: #a8d8ea;
+            --text-main: #e0d6c3;
+            --text-muted: #9c907a;
+            --parchment-bg: #f4ecd8;
+            --parchment-text: #2c221e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Cinzel', 'Trajan Pro', 'Georgia', serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #241c14 0%, #0a0806 100%);
+            overflow: hidden;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease-in-out;
+            background: rgba(10, 8, 6, 0.7);
+            backdrop-filter: blur(4px);
+        }
+
+        .screen.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Typography & Headings */
+        h1, h2, h3 {
+            color: var(--gold-primary);
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-primary), var(--gold-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        /* Buttons & Controls */
+        .btn {
+            background: linear-gradient(to bottom, #2a2015, #14100c);
+            border: 2px solid var(--gold-primary);
+            color: var(--gold-light);
+            padding: 0.8rem 2rem;
+            font-size: 1.2rem;
+            font-family: inherit;
+            cursor: pointer;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 0 10px rgba(212, 175, 55, 0.2);
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+            min-width: 220px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            background: linear-gradient(to bottom, #3a2c1d, #241c14);
+            color: #ffffff;
+            border-color: var(--gold-light);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.6), inset 0 0 15px rgba(212, 175, 55, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        /* Menu Layout */
+        .menu-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: var(--bg-panel);
+            border: 2px solid var(--gold-dark);
+            padding: 3rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            max-width: 600px;
+            width: 90%;
+        }
+
+        /* HUD & Game Bars */
+        .hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            z-index: 10;
+            background: linear-gradient(to bottom, rgba(10,8,6,0.9), transparent);
+            pointer-events: none;
+        }
+
+        .hud-interactive {
+            pointer-events: auto;
+        }
+
+        .hud-group {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            font-size: 1.1rem;
+            color: var(--gold-light);
+        }
+
+        /* Memory Board */
+        .memory-game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding-top: 60px;
+        }
+
+        .memory-grid {
+            display: grid;
+            gap: 12px;
+            perspective: 1000px;
+            margin: 1rem auto;
+        }
+
+        .memory-card {
+            width: 90px;
+            height: 120px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .memory-card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .memory-card.matched {
+            transform: rotateY(180deg);
+            opacity: 0.8;
+            filter: drop-shadow(0 0 8px var(--gold-primary));
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 6px;
+            border: 2px solid var(--gold-dark);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #1c1510, #0a0806);
+            color: var(--gold-primary);
+        }
+
+        .card-back::after {
+            content: "🔥";
+            font-size: 1.5rem;
+        }
+
+        .card-front {
+            background: var(--parchment-bg);
+            color: var(--parchment-text);
+            transform: rotateY(180deg);
+            padding: 5px;
+            text-align: center;
+        }
+
+        .card-front .card-icon {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .card-front .card-title {
+            font-size: 0.7rem;
+            font-weight: bold;
+            line-height: 1.1;
+        }
+
+        /* Trivia Screen */
+        .trivia-container {
+            background: var(--bg-panel);
+            border: 2px solid var(--gold-dark);
+            border-radius: 8px;
+            padding: 2.5rem;
+            width: 80%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        .trivia-question {
+            font-size: 1.3rem;
+            color: var(--gold-light);
+            margin-bottom: 1.5rem;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .trivia-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            width: 100%;
+            margin-bottom: 1.5rem;
+        }
+
+        .trivia-btn {
+            background: #1c1510;
+            border: 1px solid var(--gold-dark);
+            color: var(--text-main);
+            padding: 1rem;
+            font-family: inherit;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .trivia-btn:hover:not(:disabled) {
+            background: #2a2015;
+            border-color: var(--gold-primary);
+            color: var(--gold-light);
+        }
+
+        .trivia-btn.correct {
+            background: #1b3b1b;
+            border-color: #2ecc71;
+            color: #2ecc71;
+        }
+
+        .trivia-btn.incorrect {
+            background: #3b1b1b;
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
+        .trivia-explanation {
+            font-size: 1rem;
+            color: var(--text-muted);
+            text-align: center;
+            min-height: 50px;
+            margin-bottom: 1rem;
+        }
+
+        /* Lore Gallery & Codex */
+        .gallery-container {
+            display: flex;
+            width: 85%;
+            height: 75%;
+            background: var(--parchment-bg);
+            color: var(--parchment-text);
+            border: 4px solid var(--gold-dark);
+            border-radius: 8px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9);
+            overflow: hidden;
+        }
+
+        .gallery-sidebar {
+            width: 30%;
+            background: rgba(0,0,0,0.05);
+            border-right: 2px solid rgba(0,0,0,0.1);
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .gallery-content {
+            width: 70%;
+            padding: 2.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .gallery-item {
+            padding: 0.8rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            transition: background 0.2s;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+
+        .gallery-item:hover {
+            background: rgba(212, 175, 55, 0.2);
+        }
+
+        .gallery-item.active {
+            background: rgba(212, 175, 55, 0.4);
+            border-left: 4px solid var(--valyrian-red);
+        }
+
+        /* Achievements & Stats */
+        .grid-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            width: 85%;
+            max-height: 70vh;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .card-box {
+            background: var(--bg-panel);
+            border: 1px solid var(--gold-dark);
+            border-radius: 6px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .card-box h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--gold-light);
+        }
+
+        .card-box p {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+            text-align: left;
+        }
+
+        /* Utility Elements */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            min-width: 120px;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--gold-dark);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gold-primary);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Dynamic Particle & Ambient Canvas -->
+        <canvas id="bg-canvas"></canvas>
+
+        <!-- MAIN MENU -->
+        <div id="screen-main-menu" class="screen active">
+            <div class="menu-panel">
+                <h1>Mother of Dragons</h1>
+                <p>Memory & Maester Challenge</p>
+                <button class="btn" onclick="Game.switchScreen('screen-mode-select')">Play Game</button>
+                <button class="btn" onclick="Game.switchScreen('screen-lore')">Lore Gallery</button>
+                <button class="btn" onclick="Game.switchScreen('screen-achievements')">Achievements</button>
+                <button class="btn" onclick="Game.switchScreen('screen-stats')">Statistics</button>
+                <button class="btn" onclick="Game.switchScreen('screen-settings')">Settings</button>
+                <button class="btn" onclick="Game.switchScreen('screen-credits')">Credits</button>
+            </div>
+        </div>
+
+        <!-- MODE SELECT SCREEN -->
+        <div id="screen-mode-select" class="screen">
+            <button class="btn back-btn" onclick="Game.switchScreen('screen-main-menu')">Back</button>
+            <div class="menu-panel">
+                <h2>Choose Trial</h2>
+                <p>Test your wits against memory or knowledge of the Seven Kingdoms.</p>
+                <button class="btn" onclick="Game.switchScreen('screen-memory-config')">Memory Challenge</button>
+                <button class="btn" onclick="Game.switchScreen('screen-trivia-config')">Maester's Trivia</button>
+            </div>
+        </div>
+
+        <!-- MEMORY CONFIG SCREEN -->
+        <div id="screen-memory-config" class="screen">
+            <button class="btn back-btn" onclick="Game.switchScreen('screen-mode-select')">Back</button>
+            <div class="menu-panel">
+                <h2>Memory Challenge</h2>
+                <p>Select board dimensions to test your focus.</p>
+                <button class="btn" onclick="MemoryGame.start(4)">4 × 4 (Easy)</button>
+                <button class="btn" onclick="MemoryGame.start(6)">6 × 6 (Normal)</button>
+                <button class="btn" onclick="MemoryGame.start(8)">8 × 8 (Hard)</button>
+            </div>
+        </div>
+
+        <!-- MEMORY GAMEPLAY SCREEN -->
+        <div id="screen-memory-play" class="screen">
+            <div class="hud">
+                <button class="btn hud-interactive" style="min-width: 80px; padding: 0.4rem;" onclick="Game.switchScreen('screen-memory-config')">Quit</button>
+                <div class="hud-group">
+                    <span id="mem-hud-moves">Moves: 0</span>
+                    <span id="mem-hud-score">Score: 0</span>
+                    <span id="mem-hud-timer">Time: 00:00</span>
+                </div>
+            </div>
+            <div class="memory-game-container">
+                <div id="memory-grid" class="memory-grid"></div>
+            </div>
+        </div>
+
+        <!-- TRIVIA CONFIG SCREEN -->
+        <div id="screen-trivia-config" class="screen">
+            <button class="btn back-btn" onclick="Game.switchScreen('screen-mode-select')">Back</button>
+            <div class="menu-panel">
+                <h2>Maester's Examination</h2>
+                <p>Select your tier of scholarship.</p>
+                <button class="btn" onclick="TriviaGame.start('Novice')">Novice</button>
+                <button class="btn" onclick="TriviaGame.start('Knight')">Knight</button>
+                <button class="btn" onclick="TriviaGame.start('Lord Commander')">Lord Commander</button>
+                <button class="btn" onclick="TriviaGame.start('Hand of the King')">Hand of the King</button>
+                <button class="btn" onclick="TriviaGame.start('Mother of Dragons')">Mother of Dragons</button>
+            </div>
+        </div>
+
+        <!-- TRIVIA PLAY SCREEN -->
+        <div id="screen-trivia-play" class="screen">
+            <button class="btn back-btn" onclick="Game.switchScreen('screen-trivia-config')">Abort</button>
+            <div class="trivia-container">
+                <h3 id="trivia-progress" style="margin-bottom: 0.5rem; font-size: 1rem;">Question 1 / 10</h3>
+                <div id="trivia-question" class="trivia-question">Loading question...</div>
+                <div id="trivia-options" class="trivia-options"></div>
+                <div id="trivia-explanation" class="trivia-explanation"></div>
+                <button id="trivia-next-btn" class="btn" style="display: none;" onclick="TriviaGame.nextQuestion()">Next Question</button>
+            </div>
+        </div>
+
+        <!-- LORE GALLERY SCREEN -->
+        <div id="screen-lore" class="screen">
+            <button class="btn back-btn" onclick="Game.switchScreen('screen-main-menu')">Back</button>
+            <div class="gallery-container">
+                <div id="gallery-sidebar" class="gallery-sidebar"></div>
+                <div id="gallery-content" class="gallery-content">
+                    <h2>Codex of Ice and Fire</h2>
+                    <p>Select an entry from the archives to read recorded history.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACHIEVEMENTS SCREEN -->
+        <div id="screen-achievements" class="screen">
+            <button class="btn back-btn" onclick="Game.switchScreen('screen-main-menu')">Back</button>
+            <h2>Honors & Achievements</h2>
+            <p>Milestones attained across your journeys.</p>
+            <div id="achievements-container" class="grid-cards-container"></div>
+        </div>
+
+        <!-- STATISTICS SCREEN -->
+        <div id="screen-stats" class="screen">
+            <button class="btn back-btn" onclick="Game.switchScreen('screen-main-menu')">Back</button>
+            <div class="menu-panel">
+                <h2>State Chronicles</h2>
+                <div id="stats-content" style="width: 100%; text-align: left; margin: 1rem 0; font-size: 1.1rem; display: flex; flex-direction: column; gap: 0.8rem;">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS SCREEN -->
+        <div id="screen-settings" class="screen">
+            <button class="btn back-btn" onclick="Game.switchScreen('screen-main-menu')">Back</button>
+            <div class="menu-panel">
+                <h2>Configuration</h2>
+                <button class="btn" onclick="AudioSystem.toggleMute()" id="audio-toggle-btn">Toggle Audio</button>
+                <button class="btn" onclick="Game.resetData()">Reset Chronicles</button>
+            </div>
+        </div>
+
+        <!-- CREDITS SCREEN -->
+        <div id="screen-credits" class="screen">
+            <button class="btn back-btn" onclick="Game.switchScreen('screen-main-menu')">Back</button>
+            <div class="menu-panel">
+                <h2>Credits</h2>
+                <p>Inspired exclusively by the literary masterpieces of George R. R. Martin.</p>
+                <p style="font-size: 0.9rem; color: var(--gold-light);">Engineered for the browser with native Canvas, Web Audio, and Vanilla JavaScript.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================
+           CONSTANTS & GAME DATASETS
+           ========================================== */
+        const CARDS_DATA = [
+            { id: 'drogon', title: 'Drogon', icon: '🐉', type: 'Dragon' },
+            { id: 'rhaegal', title: 'Rhaegal', icon: '🐲', type: 'Dragon' },
+            { id: 'viserion', title: 'Viserion', icon: '🔥', type: 'Dragon' },
+            { id: 'needle', title: 'Needle', icon: '🗡️', type: 'Weapon' },
+            { id: 'longclaw', title: 'Longclaw', icon: '⚔️', type: 'Weapon' },
+            { id: 'stark', title: 'House Stark', icon: '🐺', type: 'House' },
+            { id: 'lannister', title: 'House Lannister', icon: '🦁', type: 'House' },
+            { id: 'targaryen', title: 'House Targaryen', icon: '👑', type: 'House' },
+            { id: 'baratheon', title: 'House Baratheon', icon: '🦌', type: 'House' },
+            { id: 'greyjoy', title: 'House Greyjoy', icon: '🐙', type: 'House' },
+            { id: 'tyrell', title: 'House Tyrell', icon: '🌹', type: 'House' },
+            { id: 'martell', title: 'House Martell', icon: '☀️', type: 'House' },
+            { id: 'arryn', title: 'House Arryn', icon: '🦅', type: 'House' },
+            { id: 'tully', title: 'House Tully', icon: '🐟', type: 'House' },
+            { id: 'nightking', title: 'The Others', icon: '❄️', type: 'Myth' },
+            { id: 'direwolf', title: 'Direwolf', icon: '🐾', type: 'Creature' },
+            { id: 'valyria', title: 'Valyria', icon: '🌋', type: 'Location' },
+            { id: 'dragonstone', title: 'Dragonstone', icon: '🏰', type: 'Location' },
+            { id: 'winterfell', title: 'Winterfell', icon: '🌲', type: 'Location' },
+            { id: 'ironthrone', title: 'Iron Throne', icon: '🪑', type: 'Artifact' },
+            { id: 'wildfire', title: 'Wildfire', icon: '🧪', type: 'Artifact' },
+            { id: 'dragonglass', title: 'Dragonglass', icon: '💎', type: 'Artifact' },
+            { id: 'faceless', title: 'Faceless Man', icon: '👤', type: 'Faction' },
+            { id: 'faceless_coin', title: 'Iron Coin', icon: '🪙', type: 'Artifact' },
+            { id: 'wall', title: 'The Wall', icon: '🧱', type: 'Location' },
+            { id: 'red_wedding', title: 'Red Keep', icon: '🏛️', type: 'Location' },
+            { id: 'shadowbinder', title: 'Shadowbinder', icon: '🌑', type: 'Magic' },
+            { id: 'krakens', title: 'Kraken', icon: '🦑', type: 'Creature' },
+            { id: 'manticore', title: 'Manticore', icon: '🦂', type: 'Creature' },
+            { id: 'sunspear', title: 'Sunspear', icon: '🛡️', type: 'Location' },
+            { id: 'pyke', title: 'Pyke', icon: '⚓', type: 'Location' },
+            { id: 'casterly', title: 'Casterly Rock', icon: '⛰️', type: 'Location' }
+        ];
+
+        const TRIVIA_DATA = [
+            {
+                q: "What is the ancestral sword of House Stark, forged from Valyrian steel?",
+                options: ["Ice", "Oathkeeper", "Widow's Wail", "Dark Sister"],
+                correct: 0,
+                exp: "Ice was the greatsword of House Stark, eventually melted down by Tywin Lannister into two smaller swords."
+            },
+            {
+                q: "What is the personal words of House Targaryen?",
+                options: ["Winter Is Coming", "Hear Me Roar", "Fire and Blood", "Ours is the Fury"],
+                correct: 2,
+                exp: "'Fire and Blood' reflects their mastery over dragons and their fierce, uncompromising rule."
+            },
+            {
+                q: "Which dragon was ridden by Aegon the Conqueror during the War of Conquest?",
+                options: ["Balerion", "Vhagar", "Meraxes", "Quicksilver"],
+                correct: 0,
+                exp: "Balerion the Black Dread was the largest of all Targaryen dragons, capable of swallowing aurochs whole."
+            },
+            {
+                q: "What is the primary religion practiced by the wildlings living Beyond the Wall?",
+                options: ["The Faith of the Seven", "The Old Gods of the Forest", "R'hllor, the Lord of Light", "The Drowned God"],
+                correct: 1,
+                exp: "Free folk worship the nameless spirits of nature, rocks, streams, and trees known as the Old Gods."
+            },
+            {
+                q: "Which city is known as the Great Bazaar of Essos, famous for its free status and dragon-road?",
+                options: ["Qarth", "Pentos", "Volantis", "Free City of Braavos"],
+                correct: 3,
+                exp: "Braavos is the wealthiest and most secret of the Free Cities, built in a lagoon among hidden islands."
+            },
+            {
+                q: "What rare substance is proven lethal to the White Walkers and Wights?",
+                options: ["Wildfire", "Dragonglass (Obsidian)", "Valyrian Steel", "Both Dragonglass and Valyrian Steel"],
+                correct: 3,
+                exp: "Both obsidian and weapons forged in Valyria with dragonflame can shatter the Others."
+            },
+            {
+                q: "Who was the Commander of the Night's Watch when Jon Snow was elected Lord Commander?",
+                options: ["Jeor Mormont", "Alliser Thorne", "Denys Mallister", "Qhorin Halfhand"],
+                correct: 0,
+                exp: "Jeor Mormont, known as the Old Bear, led the Watch until his tragic death at Craster's Keep."
+            },
+            {
+                q: "What is the name of the narrow sea strait separating Westeros from Essos?",
+                options: ["The Sunset Sea", "The Narrow Sea", "The Shivering Sea", "The Summer Sea"],
+                correct: 1,
+                exp: "The Narrow Sea separates the eastern shores of Westeros from the western coasts of Essos."
+            },
+            {
+                q: "Which noble house rules over the Iron Islands from Pyke?",
+                options: ["House Harlaw", "House Greyjoy", "House Botley", "House Drumm"],
+                correct: 1,
+                exp: "House Greyjoy of Pyke rules the ironborn, whose words are 'We Do Not Sow'."
+            },
+            {
+                q: "What is Arya Stark's direwolf named?",
+                options: ["Summer", "Grey Wind", "Nymeria", "Ghost"],
+                correct: 2,
+                exp: "Nymeria was named after the legendary warrior queen of the Rhoynar."
+            }
+        ];
+
+        const LORE_DATA = [
+            { title: "Valyria and Doom", text: "Valyria was a great empire built upon dragon-riding and blood magic. Its Freehold spanned most of Essos before a cataclysmic volcanic eruption known as the Doom shattered the peninsula." },
+            { title: "The Seven Kingdoms", text: "Westeros is historically divided into seven major realms: the North, the Vale, the Iron Islands, the Riverlands, the Westerlands, the Reach, the Stormlands, and Dorne." },
+            { title: "Dragons", text: "Dragons are creatures of fire and blood. They grow as long as they have freedom and food, bonded to riders through ancient Valyrian bloodlines." },
+            { title: "The Wall", text: "Standing over seven hundred feet tall and stretching three hundred miles from coast to coast, the Wall is an immense barrier of ice, stone, and ancient spells protecting the realm from the north." },
+            { title: "The Long Night", text: "An ancient winter that lasted a generation, during which darkness covered the world and the Others poured south out of the freezing wastes." }
+        ];
+
+        const ACHIEVEMENTS_DATA = [
+            { id: 'first_win', title: 'Breaker of Chains', desc: 'Complete your first Memory Challenge.', unlocked: false },
+            { id: 'maester_grad', title: 'Archmaester', desc: 'Score a perfect run in Maester Trivia.', unlocked: false },
+            { id: 'dragon_lord', title: 'Blood of Old Valyria', desc: 'Master the 8x8 Memory Board.', unlocked: false },
+            { id: 'collector', title: 'The North Remembers', desc: 'Explore all entries in the Lore Gallery.', unlocked: false }
+        ];
+
+        /* ==========================================
+           AUDIO SYSTEM (Web Audio API)
+           ========================================== */
+        const AudioSystem = {
+            ctx: null,
+            muted: false,
+            init() {
+                try {
+                    window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                } catch(e) {
+                    console.warn("Web Audio API not supported.");
+                }
+            },
+            playTone(freq, type, duration, gainVal = 0.1) {
+                if (this.muted || !this.ctx) return;
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            playClick() { this.playTone(440, 'sine', 0.1, 0.05); },
+            playFlip() { this.playTone(300, 'triangle', 0.15, 0.1); },
+            playMatch() { 
+                this.playTone(523.25, 'sine', 0.2, 0.1); 
+                setTimeout(() => this.playTone(659.25, 'sine', 0.3, 0.1), 100);
+            },
+            playWin() {
+                [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+                    setTimeout(() => this.playTone(f, 'triangle', 0.4, 0.15), i * 150);
+                });
+            },
+            toggleMute() {
+                this.muted = !this.muted;
+                const btn = document.getElementById('audio-toggle-btn');
+                if (btn) btn.innerText = this.muted ? "Unmute Audio" : "Toggle Audio";
+            }
+        };
+
+        /* ==========================================
+           BACKGROUND RENDERER (Particles & Atmosphere)
+           ========================================== */
+        const BackgroundRenderer = {
+            canvas: null,
+            ctx: null,
+            particles: [],
+            init() {
+                this.canvas = document.getElementById('bg-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                for (let i = 0; i < 50; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        size: Math.random() * 3 + 1,
+                        speedY: -(Math.random() * 0.8 + 0.2),
+                        speedX: (Math.random() - 0.5) * 0.5,
+                        alpha: Math.random()
+                    });
+                }
+                this.loop();
+            },
+            resize() {
+                if (!this.canvas) return;
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            },
+            loop() {
+                if (!this.ctx) return;
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.fillStyle = "rgba(212, 175, 55, 0.6)";
+                
+                this.particles.forEach(p => {
+                    p.y += p.speedY;
+                    p.x += p.speedX;
+                    if (p.y < 0) {
+                        p.y = this.canvas.height;
+                        p.x = Math.random() * this.canvas.width;
+                    }
+                    this.ctx.globalAlpha = Math.abs(Math.sin(Date.now() * 0.001 + p.alpha));
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+
+                requestAnimationFrame(() => this.loop());
+            }
+        };
+
+        /* ==========================================
+           GAME STATE & ROUTER
+           ========================================== */
+        const Game = {
+            state: {
+                stats: { gamesPlayed: 0, memoryWins: 0, triviaCorrect: 0, totalScore: 0 },
+                achievements: ACHIEVEMENTS_DATA
+            },
+            init() {
+                AudioSystem.init();
+                BackgroundRenderer.init();
+                this.loadProgress();
+                this.buildLoreGallery();
+                this.buildAchievements();
+                this.updateStatsDisplay();
+
+                // Bind click sound globally to buttons
+                document.querySelectorAll('.btn').forEach(btn => {
+                    btn.addEventListener('click', () => AudioSystem.playClick());
+                });
+            },
+            switchScreen(screenId) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                const target = document.getElementById(screenId);
+                if (target) target.classList.add('active');
+                if (screenId === 'screen-stats') this.updateStatsDisplay();
+            },
+            saveProgress() {
+                try {
+                    localStorage.setItem('mod_game_state', JSON.stringify(this.state));
+                } catch(e) {}
+            },
+            loadProgress() {
+                try {
+                    const saved = localStorage.getItem('mod_game_state');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        this.state.stats = parsed.stats || this.state.stats;
+                        if (parsed.achievements) {
+                            parsed.achievements.forEach(savedAch => {
+                                const local = this.state.achievements.find(a => a.id === savedAch.id);
+                                if (local) local.unlocked = savedAch.unlocked;
+                            });
+                        }
+                    }
+                } catch(e) {}
+            },
+            unlockAchievement(id) {
+                const ach = this.state.achievements.find(a => a.id === id);
+                if (ach && !ach.unlocked) {
+                    ach.unlocked = true;
+                    this.saveProgress();
+                    this.buildAchievements();
+                }
+            },
+            resetData() {
+                localStorage.removeItem('mod_game_state');
+                location.reload();
+            },
+            buildLoreGallery() {
+                const sidebar = document.getElementById('gallery-sidebar');
+                const content = document.getElementById('gallery-content');
+                sidebar.innerHTML = '';
+                LORE_DATA.forEach((lore, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'gallery-item' + (idx === 0 ? ' active' : '');
+                    item.innerText = lore.title;
+                    item.onclick = () => {
+                        document.querySelectorAll('.gallery-item').forEach(i => i.classList.remove('active'));
+                        item.classList.add('active');
+                        content.innerHTML = `<h2>${lore.title}</h2><p style="margin-top: 1.5rem; font-size: 1.1rem; line-height: 1.6; color: var(--parchment-text);">${lore.text}</p>`;
+                        this.unlockAchievement('collector');
+                    };
+                    sidebar.appendChild(item);
+                });
+                if (LORE_DATA.length > 0) {
+                    content.innerHTML = `<h2>${LORE_DATA[0].title}</h2><p style="margin-top: 1.5rem; font-size: 1.1rem; line-height: 1.6; color: var(--parchment-text);">${LORE_DATA[0].text}</p>`;
+                }
+            },
+            buildAchievements() {
+                const container = document.getElementById('achievements-container');
+                container.innerHTML = '';
+                this.state.achievements.forEach(ach => {
+                    const box = document.createElement('div');
+                    box.className = 'card-box';
+                    box.style.borderColor = ach.unlocked ? 'var(--gold-primary)' : 'var(--gold-dark)';
+                    box.innerHTML = `
+                        <h3>${ach.unlocked ? '🛡️' : '🔒'} ${ach.title}</h3>
+                        <p>${ach.desc}</p>
+                        <span style="font-size: 0.8rem; margin-top: 0.5rem; color: ${ach.unlocked ? 'var(--gold-primary)' : 'var(--text-muted)'};">
+                            ${ach.unlocked ? 'Unlocked' : 'Locked'}
+                        </span>
+                    `;
+                    container.appendChild(box);
+                });
+            },
+            updateStatsDisplay() {
+                const container = document.getElementById('stats-content');
+                container.innerHTML = `
+                    <div>Battles Fought: <strong>${this.state.stats.gamesPlayed}</strong></div>
+                    <div>Memory Victories: <strong>${this.state.stats.memoryWins}</strong></div>
+                    <div>Trivia Correct Answers: <strong>${this.state.stats.triviaCorrect}</strong></div>
+                    <div>Accumulated Score: <strong>${this.state.stats.totalScore}</strong></div>
+                `;
+            }
+        };
+
+        /* ==========================================
+           MEMORY GAME SYSTEM
+           ========================================== */
+        const MemoryGame = {
+            gridSize: 4,
+            moves: 0,
+            score: 0,
+            matches: 0,
+            timer: 0,
+            timerInterval: null,
+            firstCard: null,
+            lockBoard: false,
+
+            start(size) {
+                this.gridSize = size;
+                this.moves = 0;
+                this.score = 0;
+                this.matches = 0;
+                this.timer = 0;
+                this.firstCard = null;
+                this.lockBoard = false;
+
+                Game.switchScreen('screen-memory-play');
+                this.setupBoard();
+
+                if (this.timerInterval) clearInterval(this.timerInterval);
+                this.timerInterval = setInterval(() => {
+                    this.timer++;
+                    const mins = String(Math.floor(this.timer / 60)).padStart(2, '0');
+                    const secs = String(this.timer % 60).padStart(2, '0');
+                    document.getElementById('mem-hud-timer').innerText = `Time: ${mins}:${secs}`;
+                }, 1000);
+            },
+            setupBoard() {
+                const grid = document.getElementById('memory-grid');
+                grid.innerHTML = '';
+                
+                const totalCards = (this.gridSize * this.gridSize);
+                const pairsCount = totalCards / 2;
+                
+                // Shuffle and pick subset
+                const shuffledSource = [...CARDS_DATA].sort(() => 0.5 - Math.random());
+                const selected = shuffledSource.slice(0, pairsCount);
+                const deck = [...selected, ...selected].sort(() => 0.5 - Math.random());
+
+                // Set CSS Grid layout columns
+                grid.style.gridTemplateColumns = `repeat(${this.gridSize}, 1fr)`;
+
+                deck.forEach((cardData) => {
+                    const card = document.createElement('div');
+                    card.className = 'memory-card';
+                    card.dataset.id = cardData.id;
+
+                    card.innerHTML = `
+                        <div class="card-face card-back"></div>
+                        <div class="card-face card-front">
+                            <div class="card-icon">${cardData.icon}</div>
+                            <div class="card-title">${cardData.title}</div>
+                        </div>
+                    `;
+
+                    card.onclick = () => this.flipCard(card);
+                    grid.appendChild(card);
+                });
+
+                this.updateHUD();
+            },
+            flipCard(card) {
+                if (this.lockBoard) return;
+                if (card === this.firstCard || card.classList.contains('matched') || card.classList.contains('flipped')) return;
+
+                AudioSystem.playFlip();
+                card.classList.add('flipped');
+
+                if (!this.firstCard) {
+                    this.firstCard = card;
+                    return;
+                }
+
+                this.moves++;
+                this.updateHUD();
+                this.checkForMatch(card);
+            },
+            checkForMatch(secondCard) {
+                const isMatch = this.firstCard.dataset.id === secondCard.dataset.id;
+                if (isMatch) {
+                    this.disableCards();
+                } else {
+                    this.unflipCards(secondCard);
+                }
+            },
+            disableCards() {
+                AudioSystem.playMatch();
+                this.firstCard.classList.add('matched');
+                this.firstCard.dataset.matched = 'true';
+                
+                const second = document.querySelector('.memory-card.flipped:not(.matched)');
+                if(second) {
+                    second.classList.add('matched');
+                    second.dataset.matched = 'true';
+                }
+
+                this.matches++;
+                this.score += 100 * (this.gridSize === 8 ? 3 : this.gridSize === 6 ? 2 : 1);
+                this.resetTurn();
+
+                const totalPairs = (this.gridSize * this.gridSize) / 2;
+                if (this.matches === totalPairs) {
+                    this.winGame();
+                }
+            },
+            unflipCards(secondCard) {
+                this.lockBoard = true;
+                setTimeout(() => {
+                    this.firstCard.classList.remove('flipped');
+                    secondCard.classList.remove('flipped');
+                    this.resetTurn();
+                }, 1000);
+            },
+            resetTurn() {
+                this.firstCard = null;
+                this.lockBoard = false;
+            },
+            updateHUD() {
+                document.getElementById('mem-hud-moves').innerText = `Moves: ${this.moves}`;
+                document.getElementById('mem-hud-score').innerText = `Score: ${this.score}`;
+            },
+            winGame() {
+                clearInterval(this.timerInterval);
+                AudioSystem.playWin();
+                Game.state.stats.gamesPlayed++;
+                Game.state.stats.memoryWins++;
+                Game.state.stats.totalScore += this.score;
+                Game.unlockAchievement('first_win');
+                if (this.gridSize === 8) Game.unlockAchievement('dragon_lord');
+                Game.saveProgress();
+
+                setTimeout(() => {
+                    alert(`Victory! You finished the memory trial with a score of ${this.score}.`);
+                    Game.switchScreen('screen-mode-select');
+                }, 500);
+            }
+        };
+
+        /* ==========================================
+           TRIVIA ENGINE SYSTEM
+           ========================================== */
+        const TriviaGame = {
+            questions: [],
+            currentIndex: 0,
+            score: 0,
+            tier: 'Novice',
+
+            start(tier) {
+                this.tier = tier;
+                this.currentIndex = 0;
+                this.score = 0;
+                this.questions = [...TRIVIA_DATA].sort(() => 0.5 - Math.random()).slice(0, 5);
+                Game.switchScreen('screen-trivia-play');
+                this.loadQuestion();
+            },
+            loadQuestion() {
+                const q = this.questions[this.currentIndex];
+                document.getElementById('trivia-progress').innerText = `Question ${this.currentIndex + 1} / ${this.questions.length} (${this.tier})`;
+                document.getElementById('trivia-question').innerText = q.q;
+                document.getElementById('trivia-explanation').innerText = '';
+                document.getElementById('trivia-next-btn').style.display = 'none';
+
+                const optionsContainer = document.getElementById('trivia-options');
+                optionsContainer.innerHTML = '';
+
+                q.options.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'trivia-btn';
+                    btn.innerText = opt;
+                    btn.onclick = () => this.selectAnswer(idx, btn);
+                    optionsContainer.appendChild(btn);
+                });
+            },
+            selectAnswer(selectedIdx, btnElement) {
+                const q = this.questions[this.currentIndex];
+                const allButtons = document.querySelectorAll('.trivia-btn');
+                allButtons.forEach(b => b.disabled = true);
+
+                if (selectedIdx === q.correct) {
+                    btnElement.classList.add('correct');
+                    this.score++;
+                    AudioSystem.playMatch();
+                } else {
+                    btnElement.classList.add('incorrect');
+                    allButtons[q.correct].classList.add('correct');
+                    AudioSystem.playTone(150, 'sawtooth', 0.3, 0.1);
+                }
+
+                document.getElementById('trivia-explanation').innerText = q.exp;
+                document.getElementById('trivia-next-btn').style.display = 'inline-block';
+            },
+            nextQuestion() {
+                this.currentIndex++;
+                if (this.currentIndex < this.questions.length) {
+                    this.loadQuestion();
+                } else {
+                    this.endGame();
+                }
+            },
+            endGame() {
+                Game.state.stats.gamesPlayed++;
+                Game.state.stats.triviaCorrect += this.score;
+                Game.state.stats.totalScore += this.score * 50;
+                if (this.score === this.questions.length) {
+                    Game.unlockAchievement('maester_grad');
+                }
+                Game.saveProgress();
+
+                alert(`Examination complete! Correct answers: ${this.score} / ${this.questions.length}`);
+                Game.switchScreen('screen-mode-select');
+            }
+        };
+
+        // Initialize application on load
+        window.onload = () => {
+            Game.init();
+        };
+    </script>
+</body>
+</html>
